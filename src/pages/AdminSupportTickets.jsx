@@ -86,7 +86,7 @@ const AdminSupportTickets = () => {
       fetchInitialData();
     } catch (error) {
       console.error(error);
-      alert("Durum güncellenirken hata oluştu.");
+      alert("Durum güncellenirken hata oluştu: " + (error.message || JSON.stringify(error)));
     }
   };
 

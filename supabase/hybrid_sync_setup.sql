@@ -262,8 +262,10 @@ BEGIN
         RETURN OLD;
     END IF;
 
-    IF NEW.status::text = 'replied' THEN
+    IF NEW.status::text = 'closed' THEN
         mapped_status := 'resolved';
+    ELSIF NEW.status::text = 'replied' THEN
+        mapped_status := 'in_progress';
     ELSE
         mapped_status := 'pending';
     END IF;
@@ -271,6 +273,7 @@ BEGIN
     INSERT INTO support_tickets (
         id,
         user_id,
+        type,
         title,
         description,
         image_url,
@@ -281,6 +284,7 @@ BEGIN
     ) VALUES (
         NEW.id,
         NEW.user_id,
+        'ariza',
         COALESCE(NEW.title, 'Destek Talebi'),
         COALESCE(NEW.description, ''),
         NEW.photo_url,
@@ -308,7 +312,7 @@ FOR EACH ROW EXECUTE FUNCTION sync_tickets_to_support();
 CREATE OR REPLACE FUNCTION sync_support_to_tickets()
 RETURNS TRIGGER AS $$
 DECLARE
-    mapped_status VARCHAR(50);
+    mapped_status_val ticket_status;
 BEGIN
     IF pg_trigger_depth() > 1 THEN
         RETURN COALESCE(NEW, OLD);
@@ -319,10 +323,12 @@ BEGIN
         RETURN OLD;
     END IF;
 
-    IF NEW.status::text = 'resolved' THEN
-        mapped_status := 'replied';
+    IF NEW.status = 'resolved' THEN
+        mapped_status_val := 'closed'::ticket_status;
+    ELSIF NEW.status = 'in_progress' THEN
+        mapped_status_val := 'replied'::ticket_status;
     ELSE
-        mapped_status := 'pending';
+        mapped_status_val := 'open'::ticket_status;
     END IF;
 
     INSERT INTO tickets (
@@ -341,7 +347,7 @@ BEGIN
         COALESCE(NEW.title, 'Destek Talebi'),
         COALESCE(NEW.description, ''),
         NEW.image_url,
-        mapped_status,
+        mapped_status_val,
         NEW.resolution_note,
         NEW.created_at,
         NEW.updated_at
