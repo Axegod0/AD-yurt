@@ -1,272 +1,248 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import BottomNav from '../components/BottomNav';
+import Header from '../components/Header';
+import { supabase } from '../supabase';
 
 const Laundry = () => {
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [activeOrders, setActiveOrders] = useState([]);
+  const [pastOrders, setPastOrders] = useState([]);
+  const [busyStationCount, setBusyStationCount] = useState(0);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('laundry_orders')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        setActiveOrders(data.filter(o => o.status === 'pending' || o.status === 'active'));
+        setPastOrders(data.filter(o => o.status === 'completed' || o.status === 'canceled').slice(0, 10));
+      }
+      
+      const { data: allOrders } = await supabase
+        .from('laundry_orders')
+        .select('id')
+        .in('status', ['pending', 'active']);
+      
+      if (allOrders) {
+        setBusyStationCount(allOrders.length);
+      }
+    };
+    fetchOrders();
+  }, []);
 
   return (
-    <div className="bg-surface-dark text-on-surface font-body-md text-body-md flex flex-col min-h-screen selection:bg-brand-gold/30">
-      
-      <header className="fixed top-0 w-full z-50 pt-safe bg-surface-dark/90 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-        <div className="h-16 px-margin flex items-center justify-between gap-space-sm">
-          <div className="flex items-center gap-space-sm">
-            <Link to="/" className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-card transition-colors">
-              <span className="material-symbols-outlined text-on-surface">arrow_back</span>
-            </Link>
-            <div className="flex items-center gap-space-xs">
-              <span className="font-headline-sm text-headline-sm text-primary uppercase tracking-wider">Çamaşırhane</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-space-sm">
-            <div className="flex items-center gap-space-xs bg-surface-card px-space-sm py-1 rounded-full shadow-[0_0_12px_rgba(197,160,89,0.15)]">
-              <span className="material-symbols-outlined text-primary text-[18px]">monetization_on</span>
-              <span className="font-headline-sm text-headline-sm text-primary font-bold tracking-tight">145 AD</span>
-            </div>
-            <img alt="Profile" className="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1Umi-vFsj8j_T0eYltaHg1Buj2RYmu6Hen2oBFpTX0M3qM9pq4e7dQ_r0Mm3RImZsQSFC2gyV4ifC7o2gSuN_Vpt9FH9wcBGkNCFtLsRR-MFB22CReA1i2EvHsPdZ4xFo77_VVwhO9Q42UV5d4Rpg8wo5LyV50ItcjQEWoXbHAai9IwWG8Qf1cvLHcn5PvpvjVeOhwJEoLKG5mczZ7UEfsBEUx2zj5aohDke-ev79Jg3kK8yx61HGxiydlbLcScXOMEcJD1u8ixvIQ" />
-          </div>
-        </div>
-      </header>
+    <div className="bg-[#F8FAFC] dark:bg-[#07090e] text-[#0F172A] dark:text-white font-sans flex flex-col min-h-screen selection:bg-[#C5A059]/20 antialiased transition-colors duration-300">
+      <Header title="Çamaşırhane" showUserName={false} />
 
-      <main className="flex flex-col relative w-full pt-20 pb-28 bg-surface-dark min-h-screen">
-        <div className="flex flex-col w-full">
-          <div className="flex flex-col gap-space-lg px-margin pb-6">
-            
-            {/* Konum & Canlı İstasyon Durum Özeti Bandı */}
-            <div className="flex items-center justify-between bg-surface-card p-space-sm rounded-xl shadow-md">
-              <div className="flex items-center gap-space-xs min-w-0">
-                <span className="material-symbols-outlined text-primary text-[20px] shrink-0">shopping_basket</span>
-                <div className="flex flex-col min-w-0">
-                  <span className="font-label-md text-label-md text-on-surface truncate">Sepet İstasyonları</span>
-                  <span className="font-label-sm text-label-sm text-on-surface-variant truncate">Sepet Bırakma Alanı (3. Kat)</span>
-                </div>
+      {/* Main Scrollable Body */}
+      <main className="flex flex-col relative w-full pt-16 pb-28 min-h-screen">
+        <div className="flex flex-col w-full px-5 py-3 space-y-4">
+          
+          {/* Konum & Canlı İstasyon Durum Özeti Bandı */}
+          <div className="flex items-center justify-between bg-white dark:bg-[#0f1523] border border-slate-200/90 dark:border-white/5 p-3.5 rounded-2xl shadow-sm transition-colors">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-[#C5A059]/10 border border-amber-200/60 dark:border-[#C5A059]/20 flex items-center justify-center text-amber-700 dark:text-[#C5A059] shrink-0">
+                <span className="material-symbols-outlined text-[22px]">shopping_basket</span>
               </div>
-              <div className="flex items-center gap-1.5 bg-surface-container-high px-space-sm py-1 rounded-full shrink-0">
-                <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-                <span className="font-label-sm text-label-sm text-primary font-bold tracking-tight">8 Boş / 4 Dolu</span>
-              </div>
-            </div>
-
-            {/* Aktif Yıkama Takip Bölümü */}
-            <div className="flex flex-col gap-space-xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-primary text-[18px]">motion_photos_on</span>
-                  <span className="font-headline-sm text-headline-sm text-on-surface uppercase tracking-wider">Aktif Siparişim</span>
-                </div>
-                <span className="font-label-sm text-label-sm text-primary uppercase font-bold tracking-widest">Canlı Akış</span>
-              </div>
-
-              {/* Canlı Ana Takip Kartı */}
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-brand-navy-light/40 via-surface-card to-surface-card-subtle p-space-md shadow-xl">
-                {/* Ambient Glowing Aura */}
-                <div className="absolute -top-12 -right-12 w-36 h-36 bg-primary/10 rounded-full blur-2xl pointer-events-none"></div>
-                <div className="flex flex-col gap-space-md relative z-10">
-                  
-                  {/* Üst İstasyon Bilgi & Canlı Rozet */}
-                  <div className="flex items-start justify-between gap-space-xs">
-                    <div className="flex items-center gap-space-sm min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-surface-dark flex items-center justify-center shrink-0 shadow-inner">
-                        <span className="material-symbols-outlined text-primary text-[22px]">shopping_basket</span>
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-headline-md text-headline-md text-on-surface truncate">1. Sepetim • İstasyon 04</span>
-                        <span className="font-body-sm text-body-sm text-on-surface-variant truncate">Zemin Kat Sol Blok Sepet Alanı</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 bg-primary/15 px-space-xs py-1 rounded-full shrink-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
-                      <span className="font-label-sm text-label-sm text-primary font-bold">SIRADA BEKLİYOR</span>
-                    </div>
-                  </div>
-
-                  {/* Yıkama Programı Detayı */}
-                  <div className="flex items-center gap-space-xs bg-surface-dark/60 backdrop-blur-md px-space-sm py-2 rounded-lg">
-                    <span className="material-symbols-outlined text-on-surface-variant text-[16px] shrink-0">tune</span>
-                    <span className="font-body-sm text-body-sm text-on-surface truncate">Günlük Pamuklu (40°C • 1000 Devir) • Lavanta Bahçesi</span>
-                  </div>
-
-                  {/* Bilgilendirme Notu Rozeti */}
-                  <div className="flex items-start gap-space-xs bg-primary/10 border border-primary/20 px-space-sm py-2 rounded-lg">
-                    <span className="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">info</span>
-                    <span className="font-body-sm text-body-sm text-on-surface leading-relaxed">🧺 Sepetiniz İstasyon 04'te görevlinin yıkaması için bekliyor / sıraya alındı.</span>
-                  </div>
-
-                  {/* Sipariş Durumu Adımları */}
-                  <div className="flex flex-col gap-space-sm bg-surface-dark/70 backdrop-blur-md p-space-sm rounded-xl border border-primary/20">
-                    <div className="flex items-center justify-between px-space-xs">
-                      <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Sipariş Durumu</span>
-                      <span className="font-headline-sm text-headline-sm font-mono text-on-surface">#AD-CY482</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-space-xs pt-1">
-                      <div className="flex flex-col items-center gap-1 py-2 px-1 rounded-lg bg-primary/15 border border-primary/40 text-center relative shadow-[0_0_12px_rgba(197,160,89,0.2)]">
-                        <span className="material-symbols-outlined text-[18px] text-primary">pending_actions</span>
-                        <span className="font-label-sm text-label-sm text-primary font-bold">Sepet Bekliyor</span>
-                      </div>
-                      <div className="flex flex-col items-center gap-1 py-2 px-1 rounded-lg bg-surface-container/50 opacity-60 text-center">
-                        <span className="material-symbols-outlined text-[18px] text-on-surface-variant">local_laundry_service</span>
-                        <span className="font-label-sm text-label-sm text-on-surface-variant font-medium">Yıkanıyor</span>
-                      </div>
-                      <div className="flex flex-col items-center gap-1 py-2 px-1 rounded-lg bg-surface-container/50 opacity-60 text-center">
-                        <span className="material-symbols-outlined text-[18px] text-on-surface-variant">check_circle</span>
-                        <span className="font-label-sm text-label-sm text-on-surface-variant font-medium">Yıkandı & Hazır</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Aksiyon Butonları (Siparişi İptal Et & Siparişi Güncelle) */}
-                  <div className="grid grid-cols-2 gap-gutter pt-1">
-                    <button className="flex items-center justify-center gap-space-xs bg-surface-container hover:bg-surface-container-high active:scale-95 transition-all text-on-surface-variant hover:text-on-surface py-2.5 px-space-sm rounded-xl border border-surface-variant/40">
-                      <span className="material-symbols-outlined text-[18px]">cancel</span>
-                      <span className="font-label-md text-label-md font-bold">Siparişi İptal Et</span>
-                    </button>
-                    <button className="flex items-center justify-center gap-space-xs bg-surface-container hover:bg-surface-container-high text-primary active:scale-95 transition-all py-2.5 px-space-sm rounded-xl border border-primary/40 shadow-[0_0_12px_rgba(197,160,89,0.15)]">
-                      <span className="material-symbols-outlined text-[18px]">edit_note</span>
-                      <span className="font-label-md text-label-md font-bold">Siparişi Güncelle</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Yeni Yıkama Siparişi Bölümü */}
-            <div className="flex flex-col gap-space-xs">
-              <div className="flex items-center gap-space-xs">
-                <span className="material-symbols-outlined text-primary text-[18px]">add_circle</span>
-                <span className="font-headline-sm text-headline-sm text-on-surface uppercase tracking-wider">Hızlı Rezervasyon</span>
-              </div>
-              <div className="relative overflow-hidden rounded-xl bg-surface-card p-space-md shadow-lg flex flex-col gap-space-md">
-                {/* Arka Plan Dekoratif Vurgu & İkon */}
-                <div className="flex items-start justify-between">
-                  <div className="flex flex-col gap-1 min-w-0 pr-2">
-                    <span className="font-headline-md text-headline-md text-on-surface">Yeni Sepet Bırak / Sıra Al</span>
-                    <span className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">Boş olan 12 sepet alanından birine kirli sepetinizi bırakın, yıkama modunuzu seçip sıraya girin.</span>
-                  </div>
-                  <div className="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center shrink-0 shadow-md">
-                    <span className="material-symbols-outlined text-primary text-[28px]">shopping_basket</span>
-                  </div>
-                </div>
-                
-                {/* Fiyat Bilgisi Rozeti & Coin Görseli */}
-                <div className="flex items-center justify-between bg-surface-dark px-space-sm py-2 rounded-lg">
-                  <div className="flex items-center gap-space-xs">
-                    <span className="material-symbols-outlined text-primary text-[18px]">monetization_on</span>
-                    <span className="font-body-sm text-body-sm text-on-surface">Standart Yıkama:</span>
-                  </div>
-                  <span className="font-headline-sm text-headline-sm text-primary font-bold">15 AD Coin'den başlayanlarla</span>
-                </div>
-                
-                {/* Büyük Ana Aksiyon Butonu */}
-                <Link to="/laundry/step1" className="w-full flex items-center justify-center gap-space-sm bg-gradient-to-r from-primary via-brand-gold to-brand-gold-bright text-on-primary py-3 px-space-md rounded-xl font-headline-sm text-headline-sm font-bold shadow-[0_6px_20px_rgba(233,193,118,0.3)] active:scale-95 transition-all">
-                  <span className="">Sepet Bırak & Sıra Al</span>
-                  <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                </Link>
-              </div>
-            </div>
-
-            {/* Hatırlatma & Yurt Kuralları Bandı */}
-            <div className="flex items-start gap-space-sm bg-surface-card border border-primary/20 p-space-sm rounded-xl shadow-md">
-              <span className="material-symbols-outlined text-primary text-[22px] shrink-0 mt-0.5">lightbulb</span>
               <div className="flex flex-col min-w-0">
-                <span className="font-label-md text-label-md text-primary font-bold uppercase tracking-wider">Öğrenci Bilgilendirmesi</span>
-                <span className="font-body-sm text-body-sm text-on-surface leading-relaxed">💡 Bilgi: Yıkama bittiğinde çamaşırlarınızı yıkananlar alanından teslim alıp kurutmayı kendiniz yapabilirsiniz.</span>
+                <span className="text-[13px] font-bold text-[#0F172A] dark:text-white truncate">Sepet İstasyonları</span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">Sepet Bırakma Alanı (3. Kat)</span>
               </div>
             </div>
+            <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/70 dark:border-emerald-500/20 px-3 py-1.5 rounded-full shrink-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse"></span>
+              <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-400 tracking-tight">{12 - busyStationCount} Boş / {busyStationCount} Dolu</span>
+            </div>
+          </div>
 
-            <div className="flex flex-col gap-space-xs">
-              <div 
-                className="flex items-center justify-between bg-surface-card hover:bg-surface-card-subtle border border-primary/20 transition-all p-space-md rounded-xl cursor-pointer shadow-lg" 
-                onClick={() => setIsHistoryOpen(true)}
-              >
-                <div className="flex items-center gap-space-md min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center shrink-0 shadow-inner">
-                    <span className="material-symbols-outlined text-primary text-[22px]">history</span>
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="font-headline-sm text-headline-sm text-on-surface truncate">Geçmiş Yıkamaları İncele</span>
-                    <span className="font-body-sm text-body-sm text-on-surface-variant truncate">Önceki tamamlanan siparişler ve makine detayları</span>
-                  </div>
+          {/* Aktif Yıkama Takip Bölümü */}
+          {activeOrders.length > 0 && (
+            <div className="flex flex-col space-y-2.5">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#C5A059] text-[20px]">motion_photos_on</span>
+                  <h2 className="text-[15px] font-bold text-[#0F172A] dark:text-white uppercase tracking-wider">Aktif Siparişim</h2>
                 </div>
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-surface-dark text-primary shrink-0">
-                  <span className="material-symbols-outlined text-[20px]">chevron_right</span>
-                </div>
+                <span className="text-[11px] font-bold text-[#C5A059] uppercase tracking-widest bg-amber-50 dark:bg-[#C5A059]/10 border border-amber-200/70 dark:border-[#C5A059]/20 px-2.5 py-0.5 rounded-full">Canlı Akış</span>
               </div>
+              
+              {/* Canlı Ana Takip Kartı */}
+              {activeOrders.map((order, idx) => (
+                <div key={order.id} className="relative overflow-hidden rounded-2xl bg-white dark:bg-[#0f1523] border border-slate-200/90 dark:border-white/5 p-4 shadow-sm mb-3 transition-colors">
+                  <div className="absolute -top-10 -right-10 w-36 h-36 bg-[#C5A059]/10 rounded-full blur-2xl pointer-events-none"></div>
+                  <div className="flex flex-col space-y-3.5 relative z-10">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-[#C5A059]/10 border border-amber-200/70 dark:border-[#C5A059]/20 flex items-center justify-center shrink-0 shadow-sm text-amber-700 dark:text-[#C5A059]">
+                          <span className="material-symbols-outlined text-[24px]">shopping_basket</span>
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[15px] font-bold text-[#0F172A] dark:text-white truncate">{idx + 1}. Sepetim • {order.station}</span>
+                          <span className="text-[12px] text-slate-500 dark:text-slate-400 truncate">Zemin Kat Sol Blok Sepet Alanı</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-[#C5A059]/10 border border-amber-300/80 dark:border-[#C5A059]/20 px-2.5 py-1 rounded-full shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-[#C5A059] animate-ping"></span>
+                        <span className="text-[10px] font-bold text-amber-900 dark:text-[#C5A059] tracking-wide uppercase">{order.status === 'active' ? 'ÇALIŞIYOR' : 'SIRADA BEKLİYOR'}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-white/5 border border-slate-200/70 dark:border-white/5 px-3 py-2 rounded-xl text-slate-700 dark:text-slate-300">
+                      <span className="material-symbols-outlined text-amber-700 dark:text-[#C5A059] text-[18px] shrink-0">tune</span>
+                      <span className="text-[12px] font-medium truncate">{order.mode} ({order.temperature}) • {order.softener}</span>
+                    </div>
+
+                    <div className="flex items-start gap-2 bg-amber-50/70 dark:bg-[#C5A059]/5 border border-amber-200/80 dark:border-[#C5A059]/20 px-3 py-2 rounded-xl text-amber-900 dark:text-amber-200/80">
+                      <span className="material-symbols-outlined text-amber-700 dark:text-[#C5A059] text-[18px] shrink-0 mt-0.5">info</span>
+                      <span className="text-[12px] font-medium leading-relaxed">
+                        {order.status === 'active' 
+                          ? `🧺 Çamaşırlarınız ${order.machine_id || 'makinede'} yıkanıyor. ${order.time_left || ''}` 
+                          : `🧺 Sepetiniz ${order.station}'te görevlinin yıkaması için bekliyor / sıraya alındı.`}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col space-y-2 bg-slate-50/80 dark:bg-white/5 border border-slate-200 dark:border-white/5 p-3 rounded-xl">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Sipariş Durumu</span>
+                        <span className="text-[13px] font-bold font-mono text-[#0F172A] dark:text-white">#{order.id.split('-')[0]}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 pt-1">
+                        <div className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl ${order.status === 'pending' ? 'bg-white dark:bg-[#0f1523] border-2 border-[#C5A059] shadow-sm text-amber-700 dark:text-[#C5A059]' : 'bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/5 opacity-65 text-slate-500 dark:text-slate-400'} text-center`}>
+                          <span className="material-symbols-outlined text-[19px]">pending_actions</span>
+                          <span className="text-[10px] font-bold text-[#0F172A] dark:text-white">Sepet Bekliyor</span>
+                        </div>
+                        <div className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl ${order.status === 'active' ? 'bg-white dark:bg-[#0f1523] border-2 border-[#C5A059] shadow-sm text-amber-700 dark:text-[#C5A059]' : 'bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/5 opacity-65 text-slate-500 dark:text-slate-400'} text-center`}>
+                          <span className="material-symbols-outlined text-[19px]">local_laundry_service</span>
+                          <span className="text-[10px] font-medium">Yıkanıyor</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-center opacity-65 text-slate-500 dark:text-slate-400">
+                          <span className="material-symbols-outlined text-[19px]">check_circle</span>
+                          <span className="text-[10px] font-medium">Yıkandı & Hazır</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Yeni Yıkama Siparişi Bölümü */}
+          <div className="flex flex-col space-y-2.5">
+            <div className="flex items-center gap-2 px-1">
+              <span className="material-symbols-outlined text-[#C5A059] text-[20px]">add_circle</span>
+              <h2 className="text-[15px] font-bold text-[#0F172A] dark:text-white uppercase tracking-wider">Hızlı Rezervasyon</h2>
             </div>
             
+            <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-[#0f1523] border border-slate-200/90 dark:border-white/5 p-4 shadow-sm flex flex-col space-y-3.5 transition-colors">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-1 min-w-0">
+                  <h3 className="text-[16px] font-bold text-[#0F172A] dark:text-white leading-snug">Yeni Sepet Bırak / Sıra Al</h3>
+                  <p className="text-[12px] text-slate-600 dark:text-slate-400 leading-relaxed">Boş olan 12 sepet alanından birine kirli sepetinizi bırakın, yıkama modunuzu seçip sıraya girin.</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-[#C5A059]/10 border border-amber-200/70 dark:border-[#C5A059]/20 flex items-center justify-center shrink-0 shadow-sm text-amber-700 dark:text-[#C5A059]">
+                  <span className="material-symbols-outlined text-[28px]">shopping_basket</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between bg-slate-50 dark:bg-white/5 border border-slate-200/80 dark:border-white/5 px-3.5 py-2.5 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#C5A059] text-[20px]">monetization_on</span>
+                  <span className="text-[12px] text-slate-600 dark:text-slate-400 font-medium">Standart Yıkama:</span>
+                </div>
+                <span className="text-[13px] font-bold text-[#92400e] dark:text-[#C5A059]">15 AD Coin'den başlayanlarla</span>
+              </div>
+              
+              <button onClick={() => navigate('/laundry/step1')} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#D4AF37] via-[#C5A059] to-[#b38e45] text-white py-3.5 px-4 rounded-xl font-bold text-[14px] shadow-[0_4px_14px_rgba(197,160,89,0.35)] active:scale-95 hover:opacity-95 transition-all">
+                <span>Sepet Bırak & Sıra Al</span>
+                <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Hatırlatma & Yurt Kuralları Bandı */}
+          <div className="flex items-start gap-3 bg-white dark:bg-[#0f1523] border border-amber-200/80 dark:border-amber-500/20 p-3.5 rounded-2xl shadow-sm transition-colors">
+            <div className="w-9 h-9 rounded-full bg-amber-50 dark:bg-amber-500/10 border border-amber-200/60 dark:border-transparent flex items-center justify-center text-amber-700 dark:text-amber-400 shrink-0 mt-0.5">
+              <span className="material-symbols-outlined text-[20px]">lightbulb</span>
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[11px] font-bold text-[#C5A059] uppercase tracking-wider">Öğrenci Bilgilendirmesi</span>
+              <p className="text-[12px] text-slate-600 dark:text-slate-400 leading-relaxed mt-0.5">Yıkama bittiğinde çamaşırlarınızı yıkananlar alanından teslim alıp kurutmayı kendiniz yapabilirsiniz.</p>
+            </div>
+          </div>
+
+          {/* Geçmiş Yıkamaları İncele Buton Kartı */}
+          <div className="flex flex-col">
+            <div onClick={() => setIsHistoryModalOpen(true)} className="flex items-center justify-between bg-white dark:bg-[#0f1523] hover:bg-slate-50 dark:hover:bg-white/5 border border-slate-200/90 dark:border-white/5 transition-all p-3.5 rounded-2xl cursor-pointer shadow-sm">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 flex items-center justify-center shrink-0 text-[#0F172A] dark:text-white">
+                  <span className="material-symbols-outlined text-[22px]">history</span>
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[14px] font-bold text-[#0F172A] dark:text-white truncate">Geçmiş Yıkamaları İncele</span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">Önceki tamamlanan siparişler ve makine detayları</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 shrink-0">
+                <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+              </div>
+            </div>
           </div>
         </div>
-      </main>
 
-      {/* History Modal */}
-      {isHistoryOpen && (
-        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex flex-col justify-end transition-opacity duration-300" onClick={(e) => { if (e.target === e.currentTarget) setIsHistoryOpen(false); }}>
-          <div className="bg-surface-card rounded-t-2xl border-t border-primary/20 p-space-md max-h-[80vh] overflow-y-auto shadow-2xl flex flex-col gap-space-md pb-safe">
-            <div className="w-12 h-1.5 bg-surface-variant rounded-full mx-auto self-center mb-1"></div>
-            
+        {/* Geçmiş Modal */}
+        <div className={`fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex flex-col justify-end transition-opacity duration-300 ${isHistoryModalOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`} onClick={() => setIsHistoryModalOpen(false)}>
+          <div className={`bg-white dark:bg-[#0f1523] rounded-t-3xl border-t border-slate-200 dark:border-white/10 p-5 max-h-[82vh] overflow-y-auto shadow-2xl flex flex-col space-y-4 pb-safe transition-transform duration-300 ${isHistoryModalOpen ? 'translate-y-0' : 'translate-y-full'}`} onClick={e => e.stopPropagation()}>
+            <div className="w-12 h-1.5 bg-slate-200 dark:bg-white/20 rounded-full mx-auto self-center mb-1"></div>
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-space-xs">
-                <span className="material-symbols-outlined text-primary text-[22px]">history</span>
-                <span className="font-headline-md text-headline-md text-on-surface font-bold">Geçmiş Yıkamalarım</span>
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-[#C5A059] text-[24px]">history</span>
+                <h3 className="text-[17px] font-bold text-[#0F172A] dark:text-white">Geçmiş Yıkamalarım</h3>
               </div>
-              <button onClick={() => setIsHistoryOpen(false)} className="w-8 h-8 rounded-full bg-surface-dark flex items-center justify-center text-on-surface-variant hover:text-on-surface">
+              <button onClick={() => setIsHistoryModalOpen(false)} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
-            
-            <div className="flex flex-col gap-space-xs">
-              <div className="flex items-center justify-between p-space-sm bg-surface-dark/90 rounded-xl border border-surface-variant/40">
-                <div className="flex items-center gap-space-sm">
-                  <div className="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined text-[20px]">shopping_basket</span>
+            <div className="flex flex-col space-y-2.5">
+              {pastOrders.length > 0 ? pastOrders.map((order, idx) => (
+                <div key={order.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${order.status === 'completed' ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200/60 dark:border-transparent text-amber-700 dark:text-amber-400' : 'bg-rose-50 dark:bg-rose-500/10 border-rose-100 dark:border-transparent text-rose-500 dark:text-rose-400'}`}>
+                      <span className="material-symbols-outlined text-[20px]">{order.status === 'completed' ? 'shopping_basket' : 'cancel'}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[13px] font-bold text-[#0F172A] dark:text-white">{idx + 1}. Sepetim • {order.station}</span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">{new Date(order.created_at).toLocaleDateString('tr-TR')} • {new Date(order.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}</span>
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="font-headline-sm text-headline-sm text-on-surface">1. Sepetim • İstasyon 02</span>
-                    <span className="font-body-sm text-body-sm text-on-surface-variant">24 Ekim 2023 • 14:15 • Teslim Alındı</span>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="font-label-md text-label-md text-primary font-bold font-mono">-15 AD Coin</span>
-                  <span className="font-label-sm text-label-sm text-primary/80">Tamamlandı</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between p-space-sm bg-surface-dark/90 rounded-xl border border-surface-variant/40">
-                <div className="flex items-center gap-space-sm">
-                  <div className="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-on-surface-variant">
-                    <span className="material-symbols-outlined text-[20px]">cancel</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-headline-sm text-headline-sm text-on-surface">2. Sepetim • İstasyon 05</span>
-                    <span className="font-body-sm text-body-sm text-on-surface-variant">20 Ekim 2023 • 11:20 • Öğrenci İptal Etti</span>
+                  <div className="flex flex-col items-end">
+                    <span className={`text-[12px] font-bold font-mono ${order.status === 'completed' ? 'text-amber-800 dark:text-[#C5A059]' : 'text-slate-500 dark:text-slate-400'}`}>
+                      {order.status === 'completed' ? `-${order.cost} AD Coin` : '0 AD Coin'}
+                    </span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mt-0.5 ${order.status === 'completed' ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10' : 'text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10'}`}>
+                      {order.status === 'completed' ? 'Tamamlandı' : 'İptal Edildi'}
+                    </span>
                   </div>
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className="font-label-md text-label-md text-on-surface-variant font-bold font-mono">0 AD Coin</span>
-                  <span className="font-label-sm text-label-sm text-on-surface-variant">İptal Edildi</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between p-space-sm bg-surface-dark/90 rounded-xl border border-surface-variant/40">
-                <div className="flex items-center gap-space-sm">
-                  <div className="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined text-[20px]">shopping_basket</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-headline-sm text-headline-sm text-on-surface">1. Sepetim • İstasyon 01</span>
-                    <span className="font-body-sm text-body-sm text-on-surface-variant">11 Ekim 2023 • 10:30 • Teslim Alındı</span>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="font-label-md text-label-md text-primary font-bold font-mono">-15 AD Coin</span>
-                  <span className="font-label-sm text-label-sm text-primary/80">Tamamlandı</span>
-                </div>
-              </div>
+              )) : (
+                <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm">Geçmiş işlem bulunamadı.</div>
+              )}
             </div>
-            
-            <button onClick={() => setIsHistoryOpen(false)} className="w-full py-2.5 bg-surface-container hover:bg-surface-container-high rounded-xl text-on-surface font-headline-sm text-headline-sm mt-1 transition-all">Kapat</button>
+            <button onClick={() => setIsHistoryModalOpen(false)} className="w-full py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-700 dark:text-slate-300 font-bold text-[13px] mt-1 transition-all">
+              Kapat
+            </button>
           </div>
         </div>
-      )}
+      </main>
 
       <BottomNav />
     </div>
