@@ -16,7 +16,7 @@ const ActiveOrders = () => {
           .from('laundry_orders')
           .select('*')
           .eq('user_id', user.id)
-          .in('status', ['pending', 'active'])
+          .in('status', ['pending', 'active', 'washing'])
           .order('created_at', { ascending: true })
           .limit(2);
         
@@ -88,7 +88,7 @@ const ActiveOrders = () => {
         <div className="flex-shrink-0">
           <span className="inline-flex items-center gap-1.5 bg-amber-50 dark:bg-[#C5A059] text-amber-800 dark:text-[#0f172a] border border-amber-200/60 dark:border-none px-3.5 py-1.5 rounded-full font-bold text-[11px] shadow-sm dark:shadow-[0_0_12px_rgba(197,160,89,0.35)]">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-[#0f172a] animate-pulse"></span>
-            {primaryJob.status === 'active' ? 'Çalışıyor' : 'Bekliyor'}
+            {primaryJob.status === 'active' || primaryJob.status === 'washing' ? 'Çalışıyor' : 'Bekliyor'}
           </span>
         </div>
       </div>

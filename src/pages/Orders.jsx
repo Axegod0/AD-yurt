@@ -22,7 +22,7 @@ const Orders = () => {
           .order('created_at', { ascending: false });
         
         if (!error && data) {
-          const active = data.filter(job => job.status === 'active' || job.status === 'pending');
+          const active = data.filter(job => job.status === 'active' || job.status === 'pending' || job.status === 'washing');
           setActiveJobs(active);
         }
       } catch (err) {
@@ -112,18 +112,18 @@ const Orders = () => {
                           </div>
                           <div className="flex flex-col items-end shrink-0">
                             <span className="px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 text-[#a37920] dark:text-amber-400 font-semibold text-[11px] flex items-center gap-1">
-                              {job.status === 'active' ? (
+                              {job.status === 'active' || job.status === 'washing' ? (
                                 <span className="material-symbols-outlined text-[13px] animate-spin">cyclone</span>
                               ) : (
                                 <span className="material-symbols-outlined text-[13px]">schedule</span>
                               )}
-                              {job.status === 'active' ? 'Çalışıyor' : 'Bekliyor'}
+                              {job.status === 'active' || job.status === 'washing' ? 'Çalışıyor' : 'Bekliyor'}
                             </span>
                           </div>
                         </div>
                         <div className="rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 p-2.5 flex items-center justify-between gap-3 relative z-10 mt-1">
                           <div className="flex items-center gap-2 min-w-0">
-                            {job.status === 'active' ? (
+                            {job.status === 'active' || job.status === 'washing' ? (
                               <>
                                 <span className="material-symbols-outlined text-blue-500 text-[18px] shrink-0">local_laundry_service</span>
                                 <span className="text-slate-700 dark:text-slate-300 text-xs truncate">Durum: <span className="font-semibold text-blue-600 dark:text-blue-400">Yıkanıyor</span></span>

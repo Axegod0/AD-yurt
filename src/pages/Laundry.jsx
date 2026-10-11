@@ -23,17 +23,19 @@ const Laundry = () => {
         .order('created_at', { ascending: false });
 
       if (data) {
-        setActiveOrders(data.filter(o => o.status === 'pending' || o.status === 'active'));
+        setActiveOrders(data.filter(o => o.status === 'pending' || o.status === 'active' || o.status === 'washing'));
         setPastOrders(data.filter(o => o.status === 'completed' || o.status === 'canceled').slice(0, 10));
       }
       
-      const { data: allOrders } = await supabase
-        .from('laundry_orders')
-        .select('id')
-        .in('status', ['pending', 'active']);
-      
-      if (allOrders) {
-        setBusyStationCount(allOrders.length);
+      const { data: stationData } = await supabase.from('stations').select('id, status');
+      if (stationData) {
+        setBusyStationCount(stationData.filter(s => s.status === 'busy').length);
+      } else {
+        const { data: allOrders } = await supabase
+          .from('laundry_orders')
+          .select('id')
+          .in('status', ['pending', 'active', 'washing']);
+        if (allOrders) setBusyStationCount(allOrders.length);
       }
     };
     fetchOrders();

@@ -10,15 +10,28 @@ const LaundryStep1 = () => {
 
   useEffect(() => {
     const fetchStations = async () => {
-      const { data } = await supabase
+      // 1. Eski sistemin stations tablosundan 'busy' olanları al
+      const { data: stationData } = await supabase
+        .from('stations')
+        .select('id, status');
+
+      // 2. Yeni sistemin aktif siparişlerinden istasyonları al
+      const { data: orderData } = await supabase
         .from('laundry_orders')
         .select('station')
-        .in('status', ['pending', 'active']);
+        .in('status', ['pending', 'active', 'washing']);
         
-      if (data) {
-        const busyIds = data.map(order => parseInt(order.station.replace('İstasyon ', '')));
-        setBusyStations(busyIds);
+      const busySet = new Set();
+      if (stationData) {
+        stationData.filter(s => s.status === 'busy').forEach(s => busySet.add(s.id));
       }
+      if (orderData) {
+        orderData.forEach(order => {
+          const num = parseInt((order.station || '').replace(/\D/g, ''));
+          if (num) busySet.add(num);
+        });
+      }
+      setBusyStations(Array.from(busySet));
     };
     fetchStations();
   }, []);

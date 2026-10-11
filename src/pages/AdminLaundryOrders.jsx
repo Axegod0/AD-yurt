@@ -27,7 +27,7 @@ const AdminLaundryOrders = () => {
         *,
         users:user_id (full_name, room_number)
       `)
-      .in('status', ['pending', 'active'])
+      .in('status', ['pending', 'active', 'washing'])
       .order('created_at', { ascending: false });
 
     if (!error && data) {
@@ -101,6 +101,13 @@ const AdminLaundryOrders = () => {
     if (error) {
       alert('Hata oluştu: ' + error.message);
     } else {
+      const order = orders.find(o => o.id === id);
+      if (order) {
+        const stationNum = parseInt((order.station || '').replace(/\D/g, ''));
+        if (stationNum) {
+          try { await supabase.from('stations').update({ status: 'available' }).eq('id', stationNum); } catch (e) {}
+        }
+      }
       fetchOrders();
     }
   };
@@ -113,6 +120,11 @@ const AdminLaundryOrders = () => {
     const { error } = await supabase.from('laundry_orders').delete().eq('id', id);
 
     if (!error) {
+      const stationNum = parseInt((order.station || '').replace(/\D/g, ''));
+      if (stationNum) {
+        try { await supabase.from('stations').update({ status: 'available' }).eq('id', stationNum); } catch (e) {}
+      }
+
       await supabase.from('notifications').insert([{
         user_id: order.user_id,
         type: 'laundry',
@@ -127,12 +139,12 @@ const AdminLaundryOrders = () => {
   const filteredOrders = orders.filter(order => {
     if (activeFilter === 'all') return true;
     if (activeFilter === 'pending') return order.status === 'pending';
-    if (activeFilter === 'active') return order.status === 'active';
+    if (activeFilter === 'active') return order.status === 'active' || order.status === 'washing';
     return false;
   });
 
   const pendingOrders = orders.filter(o => o.status === 'pending');
-  const activeOrders = orders.filter(o => o.status === 'active');
+  const activeOrders = orders.filter(o => o.status === 'active' || o.status === 'washing');
 
   return (
     <div className="bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-100 min-h-screen flex flex-col antialiased">

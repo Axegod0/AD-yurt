@@ -85,6 +85,18 @@ const LaundryStep4 = () => {
 
       await supabase.from('laundry_orders').insert(orderInserts);
 
+      // Eski sistem ile uyumluluk için stations tablosunu da güncelle
+      try {
+        for (const basket of allBaskets) {
+          const stationNum = parseInt((basket.station || '').replace(/\D/g, ''));
+          if (stationNum) {
+            await supabase.from('stations').update({ status: 'busy' }).eq('id', stationNum);
+          }
+        }
+      } catch (stErr) {
+        console.warn("Could not update stations table:", stErr);
+      }
+
       // Clean up localStorage
       localStorage.removeItem('laundry_baskets');
       localStorage.removeItem('laundry_selected_station');
