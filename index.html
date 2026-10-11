@@ -26,12 +26,14 @@
       }
       // Sürüm kontrolü (Eski arayüzü hafızada tutan tarayıcıları zorla yeniler)
       (function() {
-        var APP_VER = '2.1.0';
+        var APP_VER = '2.2.0';
         var storedVer = localStorage.getItem('ad_yurt_app_ver');
         if (storedVer !== APP_VER) {
           localStorage.setItem('ad_yurt_app_ver', APP_VER);
-          if (storedVer) {
-            window.location.reload(true);
+          if (!window.location.search.includes('v=')) {
+            var url = new URL(window.location.href);
+            url.searchParams.set('v', Date.now());
+            window.location.replace(url.toString());
           }
         }
       })();
