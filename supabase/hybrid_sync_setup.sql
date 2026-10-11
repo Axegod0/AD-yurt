@@ -39,6 +39,9 @@ ON CONFLICT (id) DO UPDATE SET
     completed_at = EXCLUDED.completed_at;
 
 -- B) tickets -> support_tickets
+-- Base64 formatındaki uzun görsel verilerini desteklemek için TEXT yap
+ALTER TABLE support_tickets ALTER COLUMN image_url TYPE TEXT;
+
 INSERT INTO support_tickets (
     id,
     user_id,

@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS support_tickets (
     title VARCHAR(255) NOT NULL,
     description TEXT,
     machine_id VARCHAR(50),
-    image_url VARCHAR(500),
+    image_url TEXT,
     status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'in_progress', 'resolved'
     resolution_note TEXT,
     resolved_by UUID REFERENCES users(id) ON DELETE SET NULL,
