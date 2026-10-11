@@ -234,7 +234,17 @@ const Profile = () => {
               </div>
 
               {/* Row 6: Oturumu Kapat */}
-              <button onClick={() => navigate('/login')} className="w-full flex items-center justify-between p-3.5 hover:bg-red-50/60 dark:hover:bg-red-500/10 transition-colors text-left group border-t border-slate-100 dark:border-white/5" type="button">
+              <button 
+                onClick={async () => {
+                  try {
+                    await supabase.auth.signOut();
+                  } catch (e) {}
+                  localStorage.clear();
+                  navigate('/login');
+                }} 
+                className="w-full flex items-center justify-between p-3.5 hover:bg-red-50/60 dark:hover:bg-red-500/10 transition-colors text-left group border-t border-slate-100 dark:border-white/5" 
+                type="button"
+              >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-xl bg-red-100/70 dark:bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <span className="material-symbols-outlined text-[19px]">logout</span>

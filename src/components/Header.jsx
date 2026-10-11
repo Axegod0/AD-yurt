@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import NotificationsModal from './NotificationsModal';
 
-const Header = ({ title, showUserName = true, showAdminButton = false }) => {
+const Header = ({ title, showUserName = true, showAdminButton = true }) => {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [userData, setUserData] = useState({ fullName: '', role: '', initials: 'AD', badge: '' });
