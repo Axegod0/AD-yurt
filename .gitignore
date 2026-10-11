@@ -26,8 +26,10 @@ dist-ssr
 *.sln
 *.sw?
 
-# Temporary / Dumps
+# Temporary / Dumps & Backups
+backups/
 *.dump
+*.json.bak
 old_db_dump.json
 old_database_dump.sql
 old_supabase_schema.json
@@ -35,3 +37,4 @@ test_db.js
 check-table.js
 replace_theme.js
 dump.cjs
+
