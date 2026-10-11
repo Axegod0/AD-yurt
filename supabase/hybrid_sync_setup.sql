@@ -1,16 +1,12 @@
 -- ==============================================================================
--- AD YURDU: ESKİ SİSTEM VE YENİ SİSTEM İKİLİ EŞZAMANLAMA (HYBRID SYNC)
+-- AD YURDU: ESKİ SİSTEM VE YENİ SİSTEM İKİLİ EŞZAMANLAMA (HYBRID SYNC - V2)
 -- ==============================================================================
--- Bu betik, eski sistemin (laundry_jobs, tickets, stations) ile yeni sistemin
--- (laundry_orders, support_tickets) eşzamanlı (çift yönlü) çalışmasını sağlar.
--- 1. Eski sistemden gelen siparişler/talepler yeni sisteme anında yansır.
--- 2. Yeni sistemden verilen siparişler/talepler eski sisteme anında yansır.
--- 3. Mevcut tüm aktif siparişler ve geçmiş kayıtlar aktarılır.
--- 4. İstasyon durumları (stations tablosu) otomatik güncellenir.
+-- Eski sistemde `laundry_jobs.status` kolonu 'job_status' ENUM tipindedir.
+-- Bu betik, enum tip uyuşmazlığını gidermek için `::text` ve `::job_status`
+-- tip dönüşümlerini güvenli şekilde yapar.
 -- ==============================================================================
 
--- 1. MEVCUT VERİLERİ AKTARMA (INITIAL BACKFILL)
--- A) laundry_jobs -> laundry_orders
+-- 1. MEVCUT VERİLERİ YENİ SİSTEME AKTARMA (INITIAL BACKFILL)
 INSERT INTO laundry_orders (
     id,
     user_id,
@@ -30,11 +26,10 @@ SELECT
     COALESCE(lj.softener_mode, 'Yok') AS softener,
     COALESCE(lj.price_paid, 0) AS cost,
     CASE 
-        WHEN lj.status = 'washing' THEN 'active'
-        WHEN lj.status = 'pending' THEN 'pending'
-        WHEN lj.status = 'completed' THEN 'completed'
-        WHEN lj.status = 'canceled' THEN 'canceled'
-        ELSE lj.status
+        WHEN lj.status::text = 'washing' THEN 'active'
+        WHEN lj.status::text = 'pending' THEN 'pending'
+        WHEN lj.status::text = 'completed' THEN 'completed'
+        ELSE 'completed'
     END AS status,
     lj.created_at,
     lj.completed_at
@@ -62,7 +57,7 @@ SELECT
     COALESCE(t.description, '') AS description,
     t.photo_url AS image_url,
     CASE 
-        WHEN t.status = 'replied' THEN 'resolved'
+        WHEN t.status::text = 'replied' THEN 'resolved'
         ELSE 'pending'
     END AS status,
     t.admin_reply AS resolution_note,
@@ -86,7 +81,7 @@ DECLARE
     station_text VARCHAR(50);
     mapped_status VARCHAR(50);
 BEGIN
-    -- Sonsuz döngüyü engelle
+    -- Sonsuz tetikleyici döngüsünü engelle
     IF pg_trigger_depth() > 1 THEN
         RETURN COALESCE(NEW, OLD);
     END IF;
@@ -94,28 +89,27 @@ BEGIN
     -- SİLME İŞLEMİ
     IF TG_OP = 'DELETE' THEN
         DELETE FROM laundry_orders WHERE id = OLD.id;
-        -- Makineyi boşa çıkar (başka bekleyen/yıkanan yoksa)
-        IF NOT EXISTS (SELECT 1 FROM laundry_jobs WHERE station_id = OLD.station_id AND status IN ('pending', 'washing') AND id != OLD.id) THEN
+        IF NOT EXISTS (SELECT 1 FROM laundry_jobs WHERE station_id = OLD.station_id AND status::text IN ('pending', 'washing') AND id != OLD.id) THEN
             UPDATE stations SET status = 'available' WHERE id = OLD.station_id;
         END IF;
         RETURN OLD;
     END IF;
 
-    -- İstasyon metnini oluştur (#04 formatı)
+    -- İstasyon metni (#04)
     station_text := 'İstasyon #' || LPAD(NEW.station_id::text, 2, '0');
     
     -- washing -> active eşleme
-    IF NEW.status = 'washing' THEN
+    IF NEW.status::text = 'washing' THEN
         mapped_status := 'active';
     ELSE
-        mapped_status := NEW.status;
+        mapped_status := NEW.status::text;
     END IF;
 
-    -- İstasyon tablosunu senkronize et
-    IF NEW.status IN ('pending', 'washing') THEN
+    -- İstasyon tablosu durumu
+    IF NEW.status::text IN ('pending', 'washing') THEN
         UPDATE stations SET status = 'busy' WHERE id = NEW.station_id;
-    ELSIF NEW.status IN ('completed', 'canceled') THEN
-        IF NOT EXISTS (SELECT 1 FROM laundry_jobs WHERE station_id = NEW.station_id AND status IN ('pending', 'washing') AND id != NEW.id) THEN
+    ELSIF NEW.status::text = 'completed' THEN
+        IF NOT EXISTS (SELECT 1 FROM laundry_jobs WHERE station_id = NEW.station_id AND status::text IN ('pending', 'washing') AND id != NEW.id) THEN
             UPDATE stations SET status = 'available' WHERE id = NEW.station_id;
         END IF;
     END IF;
@@ -164,9 +158,9 @@ CREATE OR REPLACE FUNCTION sync_laundry_orders_to_jobs()
 RETURNS TRIGGER AS $$
 DECLARE
     extracted_station_id INTEGER;
-    mapped_status VARCHAR(50);
+    mapped_status_val job_status;
 BEGIN
-    -- Sonsuz döngüyü engelle
+    -- Sonsuz tetikleyici döngüsünü engelle
     IF pg_trigger_depth() > 1 THEN
         RETURN COALESCE(NEW, OLD);
     END IF;
@@ -189,14 +183,16 @@ BEGIN
         extracted_station_id := 1;
     END IF;
 
-    -- active -> washing eşleme
+    -- active -> washing eşleme (job_status enum: 'pending', 'washing', 'completed')
     IF NEW.status = 'active' THEN
-        mapped_status := 'washing';
+        mapped_status_val := 'washing'::job_status;
+    ELSIF NEW.status = 'completed' THEN
+        mapped_status_val := 'completed'::job_status;
     ELSE
-        mapped_status := NEW.status;
+        mapped_status_val := 'pending'::job_status;
     END IF;
 
-    -- İstasyon tablosunu senkronize et
+    -- İstasyon tablosu durumu
     IF NEW.status IN ('pending', 'active') THEN
         UPDATE stations SET status = 'busy' WHERE id = extracted_station_id;
     ELSIF NEW.status IN ('completed', 'canceled') THEN
@@ -223,7 +219,7 @@ BEGIN
         COALESCE(NEW.mode, 'Standart'),
         COALESCE(NEW.softener, 'Yok'),
         COALESCE(NEW.cost, 0),
-        mapped_status,
+        mapped_status_val,
         NEW.created_at,
         NEW.completed_at
     )
@@ -263,7 +259,7 @@ BEGIN
         RETURN OLD;
     END IF;
 
-    IF NEW.status = 'replied' THEN
+    IF NEW.status::text = 'replied' THEN
         mapped_status := 'resolved';
     ELSE
         mapped_status := 'pending';
@@ -320,7 +316,7 @@ BEGIN
         RETURN OLD;
     END IF;
 
-    IF NEW.status = 'resolved' THEN
+    IF NEW.status::text = 'resolved' THEN
         mapped_status := 'replied';
     ELSE
         mapped_status := 'pending';
