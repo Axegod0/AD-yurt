@@ -23,6 +23,7 @@ import DormRules from './pages/DormRules'
 import Contact from './pages/Contact'
 import CreateTicket from './pages/CreateTicket'
 import ForceChangePassword from './pages/ForceChangePassword'
+import VersionWatcher from './components/VersionWatcher'
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -60,6 +61,7 @@ function AnimatedRoutes() {
 function App() {
   return (
     <Router>
+      <VersionWatcher />
       <AnimatedRoutes />
     </Router>
   )

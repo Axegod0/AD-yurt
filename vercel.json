@@ -1,20 +1,7 @@
 {
-  "redirects": [
-    {
-      "source": "/:path((?!assets|favicon).*)",
-      "missing": [
-        {
-          "type": "query",
-          "key": "v"
-        }
-      ],
-      "destination": "/:path?v=2",
-      "permanent": false
-    }
-  ],
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/(index.html|version.json)?",
       "headers": [
         {
           "key": "Cache-Control",

@@ -24,18 +24,22 @@
           }
         });
       }
-      // Sürüm kontrolü (Eski arayüzü hafızada tutan tarayıcıları zorla yeniler)
+      // Canlı sürüm kontrolü (Pre-boot)
       (function() {
-        var APP_VER = '2.2.0';
-        var storedVer = localStorage.getItem('ad_yurt_app_ver');
-        if (storedVer !== APP_VER) {
-          localStorage.setItem('ad_yurt_app_ver', APP_VER);
-          if (!window.location.search.includes('v=')) {
-            var url = new URL(window.location.href);
-            url.searchParams.set('v', Date.now());
-            window.location.replace(url.toString());
-          }
-        }
+        fetch('/version.json?_t=' + Date.now(), { cache: 'no-store' })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data && data.buildTime) {
+              var stored = localStorage.getItem('ad_yurt_build_time');
+              if (stored && Number(data.buildTime) > Number(stored)) {
+                localStorage.setItem('ad_yurt_build_time', String(data.buildTime));
+                window.location.reload();
+              } else if (!stored) {
+                localStorage.setItem('ad_yurt_build_time', String(data.buildTime));
+              }
+            }
+          })
+          .catch(function() {});
       })();
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
