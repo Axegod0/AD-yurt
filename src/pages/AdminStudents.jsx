@@ -62,23 +62,33 @@ const AdminStudents = () => {
     if (!newStudent.name || !newStudent.room || !newStudent.email) return;
 
     try {
-      // Create user logic here, e.g. using auth.signUp or edge function. 
-      // For now, we simulate success and re-fetch if we had an insert to 'users'.
-      // Usually, users must be created through Supabase Auth first.
-      
-      showToast('Yeni Talebe İsteği Alındı', 'Bu işlem için Supabase Auth üzerinden kullanıcı oluşturulmalıdır. Sistem yöneticisiyle görüşün.');
+      const { data, error } = await supabase.rpc('admin_create_student', {
+        email_param: newStudent.email,
+        full_name_param: newStudent.name,
+        room_number_param: newStudent.room,
+        initial_balance_param: Number(newStudent.balance) || 0
+      });
+
+      if (error) throw error;
+
+      showToast('Talebe Başarıyla Eklendi', `${newStudent.name} sisteme kaydedildi. Varsayılan şifre: 'alidayi'`);
       setNewStudent({ name: '', room: '', balance: 100, email: '' });
       setIsFormOpen(false);
+      fetchUsers();
     } catch (error) {
-      showToast('Hata', error.message);
+      showToast('Kayıt Başarısız', error.message || 'Öğrenci eklenirken hata oluştu.');
     }
   };
 
   const handleRemoveStudent = async (id, name) => {
     if (window.confirm(`${name} isimli talebeyi sistemden ve yurt odasından silmek istediğinize emin misiniz?`)) {
-      await supabase.from('users').delete().eq('id', id);
-      fetchUsers();
-      showToast('Silindi', `${name} başarıyla sistemden kaldırıldı.`);
+      const { error } = await supabase.from('users').delete().eq('id', id);
+      if (error) {
+        showToast('Hata', 'Silme işlemi başarısız: ' + error.message);
+      } else {
+        fetchUsers();
+        showToast('Silindi', `${name} başarıyla sistemden kaldırıldı.`);
+      }
     }
   };
 
@@ -108,22 +118,25 @@ const AdminStudents = () => {
     }
   };
 
-  const saveEdit = (id) => {
-    setStudents(students.map(s => {
-      if (s.id === id) {
-        return {
-          ...s,
-          name: editFormData.name,
-          room: editFormData.room,
-          block: editFormData.room.split('-')[0].trim().toUpperCase() + ' Blok',
-          email: editFormData.email,
-          initials: editFormData.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
-        };
-      }
-      return s;
-    }));
-    setEditingId(null);
-    showToast(`${editFormData.name} Bilgileri Güncellendi`, 'Oda ve e-posta değişiklikleri sistemde senkronize edildi.');
+  const saveEdit = async (id) => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          full_name: editFormData.name,
+          room_number: editFormData.room,
+          email: editFormData.email
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setEditingId(null);
+      fetchUsers();
+      showToast(`${editFormData.name} Bilgileri Güncellendi`, 'Oda ve e-posta değişiklikleri veritabanına kaydedildi.');
+    } catch (error) {
+      showToast('Güncelleme Başarısız', error.message);
+    }
   };
 
   const filteredStudents = students.filter(s => {
