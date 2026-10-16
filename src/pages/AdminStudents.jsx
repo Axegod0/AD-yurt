@@ -81,14 +81,23 @@ const AdminStudents = () => {
   };
 
   const handleRemoveStudent = async (id, name) => {
-    if (window.confirm(`${name} isimli talebeyi sistemden ve yurt odasından silmek istediğinize emin misiniz?`)) {
-      const { error } = await supabase.from('users').delete().eq('id', id);
-      if (error) {
-        showToast('Hata', 'Silme işlemi başarısız: ' + error.message);
-      } else {
-        fetchUsers();
-        showToast('Silindi', `${name} başarıyla sistemden kaldırıldı.`);
+    if (!window.confirm(`${name} isimli talebeyi sistemden kalıcı olarak silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz.`)) return;
+
+    try {
+      const { data, error } = await supabase.rpc('admin_delete_student', {
+        p_user_id: id
+      });
+
+      if (error) throw error;
+
+      if (data?.success === false) {
+        throw new Error(data.error || 'Silme işlemi başarısız.');
       }
+
+      fetchUsers();
+      showToast('Talebe Silindi', `${name} başarıyla sistemden kaldırıldı.`);
+    } catch (err) {
+      showToast('Hata', 'Silme işlemi başarısız: ' + (err.message || 'Bilinmeyen hata'));
     }
   };
 
